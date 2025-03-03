@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>API Test</title>
+</head>
+<body>
+  <h1>API Connection Test</h1>
+  <div id="result">Testing...</div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const resultDiv = document.getElementById('result');
+      
+      // Try to fetch from the API
+      fetch('http://localhost:5000/')
+        .then(response => response.json())
+        .then(data => {
+          resultDiv.innerHTML = `
+            <p style="color: green">✅ Connection successful!</p>
+            <pre>${JSON.stringify(data, null, 2)}</pre>
+          `;
+        })
+        .catch(error => {
+          resultDiv.innerHTML = `
+            <p style="color: red">❌ Connection failed: ${error.message}</p>
+          `;
+          console.error('Error:', error);
+        });
+    });
+  </script>
+</body>
+</html> 
