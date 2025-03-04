@@ -4,30 +4,32 @@ services:
   backend:
     build:
       context: ./backend
+      dockerfile: Dockerfile
     ports:
       - "5000:5000"
     environment:
-      - NODE_ENV=development
-      - MONGODB_URI=mongodb://mongo:27017/health-fitness-app
-      - JWT_SECRET=your_jwt_secret
+      - NODE_ENV=production
     depends_on:
       - mongo
     volumes:
       - ./backend:/app
       - /app/node_modules
+    restart: always
 
   frontend:
     build:
       context: ./frontend
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:5000
+      - NODE_ENV=production
     volumes:
       - ./frontend:/app
       - /app/node_modules
     depends_on:
       - backend
+    restart: always
 
   mongo:
     image: mongo:latest

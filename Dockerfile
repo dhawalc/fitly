@@ -1,39 +1,46 @@
 # Multi-stage build for optimized production image
 
-# Backend build stage
-FROM node:18-alpine AS backend-build
-WORKDIR /app/backend
-COPY backend/package*.json ./
-RUN npm ci
-COPY backend ./
-# If you have a build step for backend, add it here
+# Use Node.js LTS version
+FROM node:18-alpine AS builder
 
-# Frontend build stage
-FROM node:18-alpine AS frontend-build
-WORKDIR /app/frontend
-COPY frontend/package*.json ./
-RUN npm ci
-COPY frontend ./
-RUN npm run build
-
-# Production stage
-FROM node:18-alpine
+# Set working directory
 WORKDIR /app
 
-# Copy backend
-COPY --from=backend-build /app/backend ./backend
+# Copy package files
+COPY package*.json ./
+COPY frontend/package*.json ./frontend/
 
-# Copy frontend build
-COPY --from=frontend-build /app/frontend/build ./frontend/build
+# Install dependencies
+RUN npm install
+RUN cd frontend && npm install
 
-# Install production dependencies only
-WORKDIR /app/backend
-RUN npm ci --only=production
+# Copy all files
+COPY . .
+
+# Build the frontend
+RUN cd frontend && npm run build
+
+# Production image
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Copy from builder
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/backend ./backend
+COPY --from=builder /app/frontend/.next ./frontend/.next
+COPY --from=builder /app/frontend/public ./frontend/public
+COPY --from=builder /app/frontend/node_modules ./frontend/node_modules
+COPY --from=builder /app/frontend/package.json ./frontend/package.json
 
 # Set environment variables
 ENV NODE_ENV=production
-ENV PORT=5000
+ENV PORT=8080
 
-EXPOSE 5000
+# Expose port
+EXPOSE 8080
 
-CMD ["node", "server.js"] 
+# Start the application
+CMD ["npm", "start"] 

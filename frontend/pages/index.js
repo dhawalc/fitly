@@ -1,5 +1,4 @@
-import React from 'react';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
@@ -9,432 +8,409 @@ import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { AuthService } from "../services/auth-service";
 import { AIInsightsService } from "../services/ai-insights-service";
 import AIInsightsComponent from "../components/ai/ai-insights";
+import { useRouter } from 'next/router';
+import { FitbitService } from "../services/fitbit-service";
+import FitbitLogo from "../components/fitbit-logo";
+import WorkoutRecommendations from "../components/workout-recommendations";
+import { Dumbbell, Heart, TrendingUp, Calendar, Clock, Award, ArrowRight, Activity, Utensils, Weight } from 'lucide-react';
+import Link from 'next/link';
+import WorkoutStreak from '../components/workout-streak';
+import WorkoutProgressChart from '../components/workout-progress-chart';
 
 export default function Dashboard() {
-  // State for user data
-  const [userData, setUserData] = useState(null);
-  
-  // State for health metrics
-  const [healthMetrics, setHealthMetrics] = useState({
-    weight: {
-      current: 0,
-      previous: 0,
-      goal: 0
-    },
-    bodyFat: {
-      current: 0,
-      previous: 0,
-      goal: 0
-    },
-    muscleMass: {
-      current: 0,
-      previous: 0,
-      goal: 0
-    },
-    period: '3 weeks',
-    workouts: [
-      { date: '2023-08-01', type: 'strength', duration: 45, calories: 320 },
-      { date: '2023-08-03', type: 'hiit', duration: 30, calories: 400 },
-      { date: '2023-08-05', type: 'strength', duration: 50, calories: 350 },
-      { date: '2023-08-08', type: 'cardio', duration: 40, calories: 380 },
-      { date: '2023-08-10', type: 'strength', duration: 45, calories: 330 },
-      { date: '2023-08-12', type: 'hiit', duration: 30, calories: 410 },
-      { date: '2023-08-15', type: 'strength', duration: 50, calories: 360 }
-    ],
-    nutrition: {
-      avgCalories: 1850,
-      avgProtein: 140, // grams
-      avgCarbs: 160, // grams
-      avgFat: 65 // grams
-    },
-    sleep: {
-      avgDuration: 6.8, // hours
-      avgQuality: 75 // percentage
+  const [userData, setUserData] = useState({
+    name: "Dhawal Chheda",
+    metrics: {
+      weight: { current: 187, goal: 165, unit: 'lbs', progress: 81 },
+      bodyFat: { current: 22, goal: 15, unit: '%', progress: 78 },
+      muscleMass: { current: 137, goal: 142, unit: 'lbs', progress: 38 }
     }
   });
   
-  // State for AI insights
-  const [insights, setInsights] = useState(null);
-  const [isLoadingInsights, setIsLoadingInsights] = useState(true);
+  const [activityData, setActivityData] = useState(null);
+  const [sleepData, setSleepData] = useState(null);
+  const [heartRateData, setHeartRateData] = useState(null);
+  const [insights, setInsights] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   
-  // Load user data from localStorage on component mount
+  const router = useRouter();
+  
+  const [stats, setStats] = useState({
+    workoutsCompleted: 0,
+    totalMinutes: 0,
+    streakDays: 0,
+    caloriesBurned: 0
+  });
+  
+  const [goals, setGoals] = useState({
+    weeklyWorkouts: 4,
+    weeklyMinutes: 150,
+    weeklyCalories: 1500
+  });
+  
+  const [progress, setProgress] = useState({
+    workouts: 0,
+    minutes: 0,
+    calories: 0
+  });
+  
+  const [recentWorkouts, setRecentWorkouts] = useState([]);
+  const [upcomingWorkouts, setUpcomingWorkouts] = useState([]);
+  
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUserData(parsedUser);
-      
-      // Update health metrics with user data
-      if (parsedUser.weight) {
-        // Calculate goal weight based on user's goal
-        let goalWeight = parsedUser.weight;
-        if (parsedUser.goal === 'fat-loss') {
-          goalWeight = Math.max(parsedUser.weight - 20, 120); // Target 20 lbs loss with minimum of 120 lbs
-        } else if (parsedUser.goal === 'muscle-gain') {
-          goalWeight = parsedUser.weight + 10; // Target 10 lbs gain for muscle
-        }
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch data from Fitbit
+        const activity = await FitbitService.getActivityData('7d');
+        const sleep = await FitbitService.getSleepData('7d');
+        const heartRate = await FitbitService.getHeartRateData('7d');
         
-        // Calculate previous weight (mock data)
-        const previousWeight = parsedUser.goal === 'fat-loss' 
-          ? parsedUser.weight + 5 // If goal is fat loss, previous weight was higher
-          : parsedUser.goal === 'muscle-gain' 
-            ? parsedUser.weight - 3 // If goal is muscle gain, previous weight was lower
-            : parsedUser.weight; // If maintenance, previous weight was the same
+        if (activity) setActivityData(activity);
+        if (sleep) setSleepData(sleep);
+        if (heartRate) setHeartRateData(heartRate);
         
-        // Update health metrics
-        setHealthMetrics(prev => ({
-          ...prev,
-          weight: {
-            current: parsedUser.weight,
-            previous: previousWeight,
-            goal: goalWeight
-          },
-          bodyFat: {
-            current: parsedUser.bodyFat || 22,
-            previous: parsedUser.goal === 'fat-loss' ? (parsedUser.bodyFat || 22) + 2 : (parsedUser.bodyFat || 22),
-            goal: parsedUser.goal === 'fat-loss' ? Math.max((parsedUser.bodyFat || 22) - 5, 10) : (parsedUser.bodyFat || 22)
-          },
-          muscleMass: {
-            current: Math.round(parsedUser.weight * 0.75),
-            previous: parsedUser.goal === 'muscle-gain' 
-              ? Math.round(parsedUser.weight * 0.75) - 3 
-              : Math.round(parsedUser.weight * 0.75),
-            goal: parsedUser.goal === 'muscle-gain' 
-              ? Math.round(parsedUser.weight * 0.75) + 10 
-              : Math.round(parsedUser.weight * 0.75)
-          }
-        }));
+        // Generate AI insights
+        const aiData = {
+          activity: activity,
+          sleep: sleep,
+          heartRate: heartRate,
+          bodyComposition: userData.metrics
+        };
+        
+        const generatedInsights = await AIInsightsService.generateInsights(aiData);
+        setInsights(generatedInsights);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setIsLoading(false);
       }
-      
-      // Generate AI insights
-      generateInsights(parsedUser);
-    }
+    };
+    
+    fetchData();
   }, []);
   
-  // Function to generate AI insights
-  const generateInsights = async (user) => {
-    setIsLoadingInsights(true);
-    try {
-      const generatedInsights = await AIInsightsService.generateInsights(user, healthMetrics);
-      setInsights(generatedInsights);
-    } catch (error) {
-      console.error('Error generating insights:', error);
-    } finally {
-      setIsLoadingInsights(false);
+  useEffect(() => {
+    // Load workout history from localStorage
+    const workoutHistory = JSON.parse(localStorage.getItem('workoutHistory') || '[]');
+    
+    // Calculate stats
+    const totalWorkouts = workoutHistory.length;
+    const totalMinutes = workoutHistory.reduce((sum, workout) => sum + workout.duration, 0);
+    const caloriesBurned = totalMinutes * 5; // Simple estimation
+    
+    setStats({
+      workoutsCompleted: totalWorkouts,
+      totalMinutes,
+      streakDays: calculateStreak(workoutHistory),
+      caloriesBurned
+    });
+    
+    // Calculate weekly progress
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
+    startOfWeek.setHours(0, 0, 0, 0);
+    
+    const weeklyWorkouts = workoutHistory.filter(workout => 
+      new Date(workout.date) >= startOfWeek
+    );
+    
+    const weeklyMinutes = weeklyWorkouts.reduce((sum, workout) => sum + workout.duration, 0);
+    const weeklyCalories = weeklyWorkouts.reduce((sum, workout) => sum + (workout.calories || 0), 0);
+    
+    setProgress({
+      workouts: (weeklyWorkouts.length / goals.weeklyWorkouts) * 100,
+      minutes: (weeklyMinutes / goals.weeklyMinutes) * 100,
+      calories: (weeklyCalories / goals.weeklyCalories) * 100
+    });
+    
+    // Get recent workouts
+    const sortedWorkouts = [...workoutHistory].sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    
+    setRecentWorkouts(sortedWorkouts.slice(0, 3));
+  }, []);
+  
+  const calculateStreak = (workouts) => {
+    if (!workouts.length) return 0;
+    
+    // Sort workouts by date
+    const sortedWorkouts = [...workouts].sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    
+    // Check if there's a workout today
+    const today = new Date().toISOString().split('T')[0];
+    const latestWorkoutDate = new Date(sortedWorkouts[0].date).toISOString().split('T')[0];
+    
+    if (latestWorkoutDate !== today) {
+      return 0; // Streak broken if no workout today
     }
+    
+    let streak = 1;
+    let currentDate = new Date(today);
+    
+    for (let i = 1; i < sortedWorkouts.length; i++) {
+      currentDate.setDate(currentDate.getDate() - 1);
+      const expectedDate = currentDate.toISOString().split('T')[0];
+      const workoutDate = new Date(sortedWorkouts[i].date).toISOString().split('T')[0];
+      
+      if (workoutDate === expectedDate) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    
+    return streak;
   };
   
-  // Format height as feet and inches
-  const formatHeight = (heightFeet, heightInches) => {
-    if (!heightFeet) return 'Not set';
-    return `${heightFeet}'${heightInches || 0}"`;
+  const formatDate = (date) => {
+    const options = { weekday: 'short', month: 'short', day: 'numeric' };
+    return new Date(date).toLocaleDateString('en-US', options);
+  };
+  
+  const getWorkoutTypeColor = (type) => {
+    const types = {
+      'hiit': 'bg-red-500',
+      'yoga': 'bg-blue-500',
+      'strength': 'bg-purple-500',
+      'cardio': 'bg-orange-500',
+      'stretching': 'bg-green-500'
+    };
+    
+    return types[type] || 'bg-gray-500';
   };
   
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center mb-4 md:mb-0">
-            <Avatar className="h-16 w-16">
-              <AvatarFallback>{userData ? userData.name.charAt(0) + (userData.name.split(' ')[1] ? userData.name.split(' ')[1].charAt(0) : '') : 'U'}</AvatarFallback>
-            </Avatar>
-            <div className="ml-4">
-              <h2 className="text-2xl font-bold">{userData?.name || 'User'}</h2>
-              <p className="text-gray-600">
-                {userData?.age} years • {formatHeight(userData?.heightFeet, userData?.heightInches)} • {userData?.weight} lbs
-              </p>
-              <div className="flex mt-1">
-                <Badge variant="outline" className="mr-2 capitalize">
-                  {userData?.goal?.replace('-', ' ') || 'No goal set'}
-                </Badge>
-                <Badge variant="outline" className="capitalize">
-                  {userData?.gender || 'Gender not set'}
-                </Badge>
-              </div>
-            </div>
-          </div>
-          <div>
-            <Button>Update Profile</Button>
-          </div>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Welcome, {userData.name}</h1>
+          <p className="text-muted-foreground">Here's your health and fitness overview</p>
         </div>
       </div>
       
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6">
+      <Tabs defaultValue="overview">
+        <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="body">Body</TabsTrigger>
           <TabsTrigger value="nutrition">Nutrition</TabsTrigger>
           <TabsTrigger value="workouts">Workouts</TabsTrigger>
           <TabsTrigger value="sleep">Sleep</TabsTrigger>
-          <TabsTrigger value="insights">AI Insights</TabsTrigger>
+          <TabsTrigger value="ai-insights">AI Insights</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Card className="bg-white shadow-md">
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Weight Card */}
+            <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Weight</CardTitle>
-                <CardDescription>Current</CardDescription>
+                <CardDescription>Current progress</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">{healthMetrics.weight.current} lbs</div>
-                <div className={`text-sm ${healthMetrics.weight.current < healthMetrics.weight.previous ? 'text-green-600' : 'text-red-600'}`}>
-                  {healthMetrics.weight.current < healthMetrics.weight.previous 
-                    ? `↓ ${(healthMetrics.weight.previous - healthMetrics.weight.current).toFixed(1)} lbs` 
-                    : `↑ ${(healthMetrics.weight.current - healthMetrics.weight.previous).toFixed(1)} lbs`}
+                <div className="text-3xl font-bold mb-2">
+                  {userData.metrics.weight.current} <span className="text-sm font-normal text-muted-foreground">{userData.metrics.weight.unit}</span>
                 </div>
-                <div className="mt-4">
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>Goal: {healthMetrics.weight.goal} lbs</span>
-                    <span>{Math.round(((healthMetrics.weight.current - healthMetrics.weight.previous) / (healthMetrics.weight.goal - healthMetrics.weight.previous)) * 100)}%</span>
-                  </div>
-                  <Progress value={Math.round(((healthMetrics.weight.current - healthMetrics.weight.previous) / (healthMetrics.weight.goal - healthMetrics.weight.previous)) * 100)} className="h-2" />
+                <Progress value={userData.metrics.weight.progress} className="h-2 mb-1" />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Current: {userData.metrics.weight.current} {userData.metrics.weight.unit}</span>
+                  <span>Goal: {userData.metrics.weight.goal} {userData.metrics.weight.unit}</span>
                 </div>
               </CardContent>
-              <CardFooter>
-                <Button variant="outline" className="w-full">View Details</Button>
-              </CardFooter>
             </Card>
             
-            <Card className="bg-white shadow-md">
+            {/* Body Fat Card */}
+            <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Body Fat</CardTitle>
-                <CardDescription>Current</CardDescription>
+                <CardDescription>Current progress</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">{healthMetrics.bodyFat.current}%</div>
-                <div className={`text-sm ${healthMetrics.bodyFat.current < healthMetrics.bodyFat.previous ? 'text-green-600' : 'text-red-600'}`}>
-                  {healthMetrics.bodyFat.current < healthMetrics.bodyFat.previous 
-                    ? `↓ ${(healthMetrics.bodyFat.previous - healthMetrics.bodyFat.current).toFixed(1)}%` 
-                    : `↑ ${(healthMetrics.bodyFat.current - healthMetrics.bodyFat.previous).toFixed(1)}%`}
+                <div className="text-3xl font-bold mb-2">
+                  {userData.metrics.bodyFat.current} <span className="text-sm font-normal text-muted-foreground">{userData.metrics.bodyFat.unit}</span>
                 </div>
-                <div className="mt-4">
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>Goal: {healthMetrics.bodyFat.goal}%</span>
-                    <span>{Math.round(((healthMetrics.bodyFat.current - healthMetrics.bodyFat.previous) / (healthMetrics.bodyFat.goal - healthMetrics.bodyFat.previous)) * 100)}%</span>
-                  </div>
-                  <Progress value={Math.round(((healthMetrics.bodyFat.current - healthMetrics.bodyFat.previous) / (healthMetrics.bodyFat.goal - healthMetrics.bodyFat.previous)) * 100)} className="h-2" />
+                <Progress value={userData.metrics.bodyFat.progress} className="h-2 mb-1" />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Current: {userData.metrics.bodyFat.current} {userData.metrics.bodyFat.unit}</span>
+                  <span>Goal: {userData.metrics.bodyFat.goal} {userData.metrics.bodyFat.unit}</span>
                 </div>
               </CardContent>
-              <CardFooter>
-                <Button variant="outline" className="w-full">View Details</Button>
-              </CardFooter>
             </Card>
             
-            <Card className="bg-white shadow-md">
+            {/* Muscle Mass Card */}
+            <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Recent Workouts</CardTitle>
-                <CardDescription>Last 7 days</CardDescription>
+                <CardTitle className="text-lg">Muscle Mass</CardTitle>
+                <CardDescription>Current progress</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  {healthMetrics.workouts.slice(0, 3).map((workout, index) => (
-                    <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                      <div>
-                        <div className="font-medium capitalize">{workout.type}</div>
-                        <div className="text-sm text-gray-500">{workout.date}</div>
+                <div className="text-3xl font-bold mb-2">
+                  {userData.metrics.muscleMass.current} <span className="text-sm font-normal text-muted-foreground">{userData.metrics.muscleMass.unit}</span>
+                </div>
+                <Progress value={userData.metrics.muscleMass.progress} className="h-2 mb-1" />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Current: {userData.metrics.muscleMass.current} {userData.metrics.muscleMass.unit}</span>
+                  <span>Goal: {userData.metrics.muscleMass.goal} {userData.metrics.muscleMass.unit}</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Recent Activity Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Activity</CardTitle>
+                <CardDescription>Your latest workouts and measurements</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {recentWorkouts.map((workout, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 border-b last:border-0">
+                      <div className="flex items-center">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          workout.type?.includes('Strength') ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'
+                        }`}>
+                          {workout.type?.includes('Strength') ? 
+                            <Activity className="h-5 w-5" /> : 
+                            <Dumbbell className="h-5 w-5" />
+                          }
+                        </div>
+                        <div className="ml-3">
+                          <div className="font-medium">{workout.type || 'Workout'}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(workout.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </div>
+                        </div>
                       </div>
                       <div className="text-right">
-                        <div>{workout.duration} min</div>
-                        <div className="text-sm text-gray-500">{workout.calories} cal</div>
+                        <div className="font-medium">{workout.duration} min</div>
+                        <div className="text-xs text-muted-foreground">{workout.calories} cal</div>
                       </div>
                     </div>
                   ))}
                 </div>
+                <Link href="/activity">
+                  <Button variant="ghost" className="w-full mt-4">
+                    View All Activity
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
               </CardContent>
-              <CardFooter>
-                <Button variant="outline" className="w-full">View All Workouts</Button>
-              </CardFooter>
             </Card>
+            
+            {/* AI Insights Card */}
+            <AIInsightsComponent insights={insights} isLoading={isLoading} />
           </div>
-          
-          <Card className="bg-white shadow-md">
+        </TabsContent>
+        
+        <TabsContent value="body">
+          <Card>
+            <CardHeader>
+              <CardTitle>Body Composition</CardTitle>
+              <CardDescription>Track your body metrics over time</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <Link href="/body-composition">
+                  <Button>
+                    Go to Body Composition
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="nutrition">
+          <Card>
+            <CardHeader>
+              <CardTitle>Nutrition</CardTitle>
+              <CardDescription>Track your meals and macros</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <Link href="/nutrition">
+                  <Button>
+                    Go to Nutrition
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="workouts">
+          <Card>
+            <CardHeader>
+              <CardTitle>Workouts</CardTitle>
+              <CardDescription>View and log your workouts</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <Link href="/workouts">
+                  <Button>
+                    Go to Workouts
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="sleep">
+          <Card>
+            <CardHeader>
+              <CardTitle>Sleep</CardTitle>
+              <CardDescription>Track your sleep patterns</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <Link href="/sleep">
+                  <Button>
+                    Go to Sleep
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="ai-insights">
+          <Card>
             <CardHeader>
               <CardTitle>AI Health Insights</CardTitle>
               <CardDescription>Personalized recommendations based on your data</CardDescription>
             </CardHeader>
             <CardContent>
-              {isLoadingInsights ? (
-                <div className="flex justify-center items-center h-32">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-                </div>
-              ) : insights ? (
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <h3 className="font-medium text-blue-800">{insights.progress.title}</h3>
-                  <p className="mt-2">{insights.progress.content}</p>
-                </div>
-              ) : (
-                <div className="text-center py-4">
-                  <p className="text-gray-500">Unable to generate insights at this time.</p>
-                </div>
-              )}
-            </CardContent>
-            <CardFooter>
-              <Button variant="outline" className="w-full" onClick={() => generateInsights(userData)}>
-                View All Insights
-              </Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="body" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="bg-white shadow-md">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Weight</CardTitle>
-                <CardDescription>Current</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{healthMetrics.weight.current} lbs</div>
-                <div className={`text-sm ${healthMetrics.weight.current < healthMetrics.weight.previous ? 'text-green-600' : 'text-red-600'}`}>
-                  {healthMetrics.weight.current < healthMetrics.weight.previous 
-                    ? `↓ ${(healthMetrics.weight.previous - healthMetrics.weight.current).toFixed(1)} lbs` 
-                    : `↑ ${(healthMetrics.weight.current - healthMetrics.weight.previous).toFixed(1)} lbs`}
-                </div>
-                <div className="mt-4">
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>Goal: {healthMetrics.weight.goal} lbs</span>
-                    <span>{Math.round(((healthMetrics.weight.current - healthMetrics.weight.previous) / (healthMetrics.weight.goal - healthMetrics.weight.previous)) * 100)}%</span>
-                  </div>
-                  <Progress value={Math.round(((healthMetrics.weight.current - healthMetrics.weight.previous) / (healthMetrics.weight.goal - healthMetrics.weight.previous)) * 100)} className="h-2" />
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-white shadow-md">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Body Fat</CardTitle>
-                <CardDescription>Current</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{healthMetrics.bodyFat.current}%</div>
-                <div className={`text-sm ${healthMetrics.bodyFat.current < healthMetrics.bodyFat.previous ? 'text-green-600' : 'text-red-600'}`}>
-                  {healthMetrics.bodyFat.current < healthMetrics.bodyFat.previous 
-                    ? `↓ ${(healthMetrics.bodyFat.previous - healthMetrics.bodyFat.current).toFixed(1)}%` 
-                    : `↑ ${(healthMetrics.bodyFat.current - healthMetrics.bodyFat.previous).toFixed(1)}%`}
-                </div>
-                <div className="mt-4">
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>Goal: {healthMetrics.bodyFat.goal}%</span>
-                    <span>{Math.round(((healthMetrics.bodyFat.current - healthMetrics.bodyFat.previous) / (healthMetrics.bodyFat.goal - healthMetrics.bodyFat.previous)) * 100)}%</span>
-                  </div>
-                  <Progress value={Math.round(((healthMetrics.bodyFat.current - healthMetrics.bodyFat.previous) / (healthMetrics.bodyFat.goal - healthMetrics.bodyFat.previous)) * 100)} className="h-2" />
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-white shadow-md">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Muscle Mass</CardTitle>
-                <CardDescription>Current Estimate</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{healthMetrics.muscleMass.current} lbs</div>
-                <div className={`text-sm ${healthMetrics.muscleMass.current > healthMetrics.muscleMass.previous ? 'text-green-600' : 'text-red-600'}`}>
-                  {healthMetrics.muscleMass.current > healthMetrics.muscleMass.previous 
-                    ? `↑ ${(healthMetrics.muscleMass.current - healthMetrics.muscleMass.previous).toFixed(1)} lbs` 
-                    : `↓ ${(healthMetrics.muscleMass.previous - healthMetrics.muscleMass.current).toFixed(1)} lbs`}
-                </div>
-                <div className="mt-4">
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>Goal: {healthMetrics.muscleMass.goal} lbs</span>
-                    <span>{Math.round(((healthMetrics.muscleMass.current - healthMetrics.muscleMass.previous) / (healthMetrics.muscleMass.goal - healthMetrics.muscleMass.previous)) * 100)}%</span>
-                  </div>
-                  <Progress value={Math.round(((healthMetrics.muscleMass.current - healthMetrics.muscleMass.previous) / (healthMetrics.muscleMass.goal - healthMetrics.muscleMass.previous)) * 100)} className="h-2" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-          
-          <Card className="bg-white shadow-md">
-            <CardHeader>
-              <CardTitle>Body Measurements</CardTitle>
-              <CardDescription>Current measurements</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div className="p-4 bg-gray-50 rounded-lg text-center">
-                  <div className="text-sm text-gray-500">Chest</div>
-                  <div className="text-xl font-bold">{userData?.measurements?.chest || '--'}"</div>
-                </div>
-                <div className="p-4 bg-gray-50 rounded-lg text-center">
-                  <div className="text-sm text-gray-500">Waist</div>
-                  <div className="text-xl font-bold">{userData?.measurements?.waist || '--'}"</div>
-                </div>
-                <div className="p-4 bg-gray-50 rounded-lg text-center">
-                  <div className="text-sm text-gray-500">Hips</div>
-                  <div className="text-xl font-bold">{userData?.measurements?.hips || '--'}"</div>
-                </div>
-                <div className="p-4 bg-gray-50 rounded-lg text-center">
-                  <div className="text-sm text-gray-500">Arms</div>
-                  <div className="text-xl font-bold">{userData?.measurements?.arms || '--'}"</div>
-                </div>
-                <div className="p-4 bg-gray-50 rounded-lg text-center">
-                  <div className="text-sm text-gray-500">Thighs</div>
-                  <div className="text-xl font-bold">{userData?.measurements?.thighs || '--'}"</div>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button variant="outline" className="w-full">Update Measurements</Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="nutrition" className="space-y-4">
-          <Card className="bg-white shadow-md">
-            <CardHeader>
-              <CardTitle>Nutrition Overview</CardTitle>
-              <CardDescription>Daily averages for the last week</CardDescription>
-            </CardHeader>
-            <CardContent>
               <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <div className="font-medium">Daily Calories</div>
-                    <div className="text-sm text-gray-500">Weekly average</div>
+                {isLoading ? (
+                  <div className="flex items-center justify-center h-24">
+                    <p className="text-muted-foreground">Loading your personalized insights...</p>
                   </div>
-                  <div className="text-2xl font-bold">{healthMetrics.nutrition.avgCalories}</div>
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Protein</span>
-                    <span>{healthMetrics.nutrition.avgProtein}g ({Math.round((healthMetrics.nutrition.avgProtein * 4 / healthMetrics.nutrition.avgCalories) * 100)}%)</span>
+                ) : insights && insights.length > 0 ? (
+                  insights.map((insight, index) => (
+                    <div key={index} className="p-4 border rounded-lg">
+                      <p>{insight}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex items-center justify-center h-24">
+                    <p className="text-muted-foreground">Add more health data to get personalized insights</p>
                   </div>
-                  <Progress value={Math.round((healthMetrics.nutrition.avgProtein * 4 / healthMetrics.nutrition.avgCalories) * 100)} className="h-2 bg-gray-100" indicatorClassName="bg-blue-500" />
-                  
-                  <div className="flex justify-between text-sm">
-                    <span>Carbs</span>
-                    <span>{healthMetrics.nutrition.avgCarbs}g ({Math.round((healthMetrics.nutrition.avgCarbs * 4 / healthMetrics.nutrition.avgCalories) * 100)}%)</span>
-                  </div>
-                  <Progress value={Math.round((healthMetrics.nutrition.avgCarbs * 4 / healthMetrics.nutrition.avgCalories) * 100)} className="h-2 bg-gray-100" indicatorClassName="bg-yellow-500" />
-                  
-                  <div className="flex justify-between text-sm">
-                    <span>Fat</span>
-                    <span>{healthMetrics.nutrition.avgFat}g ({Math.round((healthMetrics.nutrition.avgFat * 9 / healthMetrics.nutrition.avgCalories) * 100)}%)</span>
-                  </div>
-                  <Progress value={Math.round((healthMetrics.nutrition.avgFat * 9 / healthMetrics.nutrition.avgCalories) * 100)} className="h-2 bg-gray-100" indicatorClassName="bg-red-500" />
-                </div>
+                )}
               </div>
             </CardContent>
-            <CardFooter>
-              <Button variant="outline" className="w-full">View Nutrition Details</Button>
-            </CardFooter>
           </Card>
         </TabsContent>
-        
-        <TabsContent value="insights" className="space-y-4">
-          <AIInsightsComponent 
-            insights={insights} 
-            isLoading={isLoadingInsights} 
-            userData={userData} 
-            healthMetrics={healthMetrics}
-            onRefresh={() => generateInsights(userData)}
-          />
-        </TabsContent>
-        
-        {/* Other tabs content... */}
       </Tabs>
     </div>
   );

@@ -28,6 +28,15 @@ const buttonVariants = cva(
   }
 )
 
+const variantClasses = {
+  primary: 'bg-indigo-600 hover:bg-indigo-700 text-white focus:ring-indigo-500',
+  secondary: 'bg-teal-500 hover:bg-teal-600 text-white focus:ring-teal-400',
+  outline: 'border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 focus:ring-indigo-500',
+  ghost: 'bg-transparent hover:bg-gray-100 text-gray-700 focus:ring-gray-400',
+  success: 'bg-green-500 hover:bg-green-600 text-white focus:ring-green-500',
+  danger: 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-500',
+};
+
 const Button = React.forwardRef(({ className, variant, size, asChild = false, ...props }, ref) => {
   const Comp = asChild ? React.Fragment : "button"
   return (

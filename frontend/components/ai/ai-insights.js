@@ -1,107 +1,139 @@
 import React from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
-import { AIInsightsService } from "../../services/ai-insights-service";
+import { Sparkles, RefreshCw, Lightbulb } from 'lucide-react';
 
-export default function AIInsightsComponent({ insights, isLoading, userData, healthMetrics, onRefresh }) {
-  const handleRefresh = async () => {
-    if (onRefresh) {
-      onRefresh();
-    } else {
-      // Default refresh behavior if no onRefresh prop is provided
-      try {
-        const newInsights = await AIInsightsService.generateInsights(userData, healthMetrics);
-        // Since we can't update the insights state here, we'll just log it
-        console.log('New insights generated:', newInsights);
-      } catch (error) {
-        console.error('Error refreshing insights:', error);
-      }
-    }
-  };
+export default function AIInsightsComponent({ insights, isLoading, onRefresh }) {
+  // Check if insights is an array (as expected in some places) or an object (as expected in others)
+  const isInsightsArray = Array.isArray(insights);
   
+  // Handle loading state
   if (isLoading) {
     return (
-      <Card className="bg-white shadow-md">
+      <Card>
         <CardHeader>
-          <CardTitle>AI Health Insights</CardTitle>
-          <CardDescription>
-            Generating personalized recommendations based on your data...
-          </CardDescription>
+          <CardTitle className="flex items-center">
+            <Sparkles className="h-5 w-5 mr-2 text-primary" />
+            AI Health Insights
+          </CardTitle>
+          <CardDescription>Personalized recommendations based on your data</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <div className="flex items-center justify-center h-40">
+            <div className="flex flex-col items-center">
+              <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+              <p className="mt-2 text-sm text-muted-foreground">Analyzing your health data...</p>
+            </div>
           </div>
         </CardContent>
       </Card>
     );
   }
   
-  if (!insights) {
+  // Handle empty insights
+  if (!insights || (isInsightsArray && insights.length === 0) || (!isInsightsArray && Object.keys(insights).length === 0)) {
     return (
-      <Card className="bg-white shadow-md">
+      <Card>
         <CardHeader>
-          <CardTitle>AI Health Insights</CardTitle>
-          <CardDescription>
-            Personalized recommendations based on your data
-          </CardDescription>
+          <CardTitle className="flex items-center">
+            <Sparkles className="h-5 w-5 mr-2 text-primary" />
+            AI Health Insights
+          </CardTitle>
+          <CardDescription>Personalized recommendations based on your data</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8">
-            <p className="text-gray-500">Unable to generate insights at this time.</p>
-            <Button onClick={handleRefresh} className="mt-4">
-              Try Again
-            </Button>
+          <div className="flex flex-col items-center justify-center h-40 text-center">
+            <Lightbulb className="h-8 w-8 text-muted-foreground mb-2" />
+            <p className="text-muted-foreground">Add more health data to get personalized insights</p>
+            {onRefresh && (
+              <Button variant="outline" className="mt-4" onClick={onRefresh}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Generate Insights
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
     );
   }
   
+  // Render array-type insights
+  if (isInsightsArray) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Sparkles className="h-5 w-5 mr-2 text-primary" />
+            AI Health Insights
+          </CardTitle>
+          <CardDescription>Personalized recommendations based on your data</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {insights.map((insight, index) => (
+              <div key={index} className="p-4 border rounded-lg">
+                <p>{insight}</p>
+              </div>
+            ))}
+          </div>
+          {onRefresh && (
+            <Button variant="outline" className="w-full mt-4" onClick={onRefresh}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh Insights
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  // Render object-type insights with safe access
   return (
-    <Card className="bg-white shadow-md">
+    <Card>
       <CardHeader>
-        <CardTitle>AI Health Insights</CardTitle>
-        <CardDescription>
-          Personalized recommendations based on your data
-        </CardDescription>
+        <CardTitle className="flex items-center">
+          <Sparkles className="h-5 w-5 mr-2 text-primary" />
+          AI Health Insights
+        </CardTitle>
+        <CardDescription>Personalized recommendations based on your data</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h3 className="font-medium text-blue-800">{insights.progress.title}</h3>
-            <p className="mt-2">{insights.progress.content}</p>
-          </div>
+          {insights.progress && (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h3 className="font-medium text-blue-800">{insights.progress?.title || 'Progress'}</h3>
+              <p className="mt-2">{insights.progress?.content || 'No progress data available.'}</p>
+            </div>
+          )}
           
-          <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
-            <h3 className="font-medium text-purple-800">{insights.workout.title}</h3>
-            <p className="mt-2">{insights.workout.content}</p>
-          </div>
+          {insights.recommendations && (
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <h3 className="font-medium text-green-800">{insights.recommendations?.title || 'Recommendations'}</h3>
+              <p className="mt-2">{insights.recommendations?.content || 'No recommendations available.'}</p>
+            </div>
+          )}
           
-          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-            <h3 className="font-medium text-green-800">{insights.nutrition.title}</h3>
-            <p className="mt-2">{insights.nutrition.content}</p>
-          </div>
+          {insights.warnings && (
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <h3 className="font-medium text-yellow-800">{insights.warnings?.title || 'Warnings'}</h3>
+              <p className="mt-2">{insights.warnings?.content || 'No warnings to display.'}</p>
+            </div>
+          )}
           
-          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <h3 className="font-medium text-yellow-800">{insights.health.title}</h3>
-            <p className="mt-2">{insights.health.content}</p>
-          </div>
-          
-          <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
-            <h3 className="font-medium text-indigo-800">{insights.sleep.title}</h3>
-            <p className="mt-2">{insights.sleep.content}</p>
-          </div>
+          {!insights.progress && !insights.recommendations && !insights.warnings && (
+            <div className="p-4 border rounded-lg">
+              <p className="text-muted-foreground">No specific insights available at this time.</p>
+            </div>
+          )}
         </div>
+        
+        {onRefresh && (
+          <Button variant="outline" className="w-full mt-4" onClick={onRefresh}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh Insights
+          </Button>
+        )}
       </CardContent>
-      <CardFooter className="flex justify-between">
-        <Button variant="outline" onClick={handleRefresh}>
-          Refresh Insights
-        </Button>
-        <Button>
-          Generate Comprehensive Report
-        </Button>
-      </CardFooter>
     </Card>
   );
 } 

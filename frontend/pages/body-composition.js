@@ -1,340 +1,335 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Progress } from "../components/ui/progress";
-import { Badge } from "../components/ui/badge";
+import { Weight, Ruler, TrendingUp, Plus } from 'lucide-react';
 import { AuthService } from "../services/auth-service";
 import { AIInsightsService } from "../services/ai-insights-service";
 import AIInsightsComponent from "../components/ai/ai-insights";
 
-export default function BodyComposition() {
-  // State for user data
-  const [userData, setUserData] = useState(null);
-  
-  // State for body metrics
-  const [bodyMetrics, setBodyMetrics] = useState({
+export default function BodyCompositionPage() {
+  const [measurements, setMeasurements] = useState({
     weight: {
-      current: 0,
-      previous: 0,
-      goal: 0,
-      history: []
+      current: 187,
+      previous: 192,
+      goal: 165,
+      unit: 'lbs',
+      history: [
+        { date: '2023-07-01', value: 192 },
+        { date: '2023-07-08', value: 190 },
+        { date: '2023-07-15', value: 189 },
+        { date: '2023-07-22', value: 188 },
+        { date: '2023-07-29', value: 187 }
+      ]
     },
     bodyFat: {
-      current: 0,
-      previous: 0,
-      goal: 0,
-      history: []
+      current: 22,
+      previous: 24,
+      goal: 15,
+      unit: '%',
+      history: [
+        { date: '2023-07-01', value: 24 },
+        { date: '2023-07-08', value: 23.5 },
+        { date: '2023-07-15', value: 23 },
+        { date: '2023-07-22', value: 22.5 },
+        { date: '2023-07-29', value: 22 }
+      ]
     },
     muscleMass: {
-      current: 0,
-      previous: 0,
-      goal: 0,
-      history: []
-    },
-    measurements: {
-      chest: { current: 0, previous: 0, goal: 0 },
-      waist: { current: 0, previous: 0, goal: 0 },
-      hips: { current: 0, previous: 0, goal: 0 },
-      arms: { current: 0, previous: 0, goal: 0 },
-      thighs: { current: 0, previous: 0, goal: 0 }
+      current: 137,
+      previous: 134,
+      goal: 142,
+      unit: 'lbs',
+      history: [
+        { date: '2023-07-01', value: 134 },
+        { date: '2023-07-08', value: 135 },
+        { date: '2023-07-15', value: 135.5 },
+        { date: '2023-07-22', value: 136 },
+        { date: '2023-07-29', value: 137 }
+      ]
     }
   });
   
-  // State for AI insights
-  const [insights, setInsights] = useState(null);
-  const [isLoadingInsights, setIsLoadingInsights] = useState(true);
+  const [newMeasurement, setNewMeasurement] = useState({
+    type: 'weight',
+    value: '',
+    date: new Date().toISOString().split('T')[0]
+  });
   
-  // Load user data from localStorage on component mount
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUserData(parsedUser);
-      
-      // Update body metrics with user data
-      if (parsedUser.weight) {
-        // Calculate goal weight based on user's goal
-        let goalWeight = parsedUser.weight;
-        if (parsedUser.goal === 'fat-loss') {
-          goalWeight = Math.max(parsedUser.weight - 20, 120); // Target 20 lbs loss with minimum of 120 lbs
-        } else if (parsedUser.goal === 'muscle-gain') {
-          goalWeight = parsedUser.weight + 10; // Target 10 lbs gain for muscle
-        }
-        
-        // Calculate previous weight (mock data)
-        const previousWeight = parsedUser.goal === 'fat-loss' 
-          ? parsedUser.weight + 5 // If goal is fat loss, previous weight was higher
-          : parsedUser.goal === 'muscle-gain' 
-            ? parsedUser.weight - 3 // If goal is muscle gain, previous weight was lower
-            : parsedUser.weight; // If maintenance, previous weight was the same
-        
-        // Generate mock history data
-        const today = new Date();
-        const weightHistory = [];
-        const bodyFatHistory = [];
-        const muscleMassHistory = [];
-        
-        for (let i = 30; i >= 0; i -= 5) {
-          const date = new Date(today);
-          date.setDate(date.getDate() - i);
-          
-          // Weight progresses from previous to current
-          const progress = (30 - i) / 30;
-          const weightDiff = parsedUser.weight - previousWeight;
-          const weight = previousWeight + (weightDiff * progress);
-          
-          // Body fat decreases if goal is fat loss
-          const bodyFatStart = parsedUser.goal === 'fat-loss' ? (parsedUser.bodyFat || 22) + 2 : (parsedUser.bodyFat || 22);
-          const bodyFatEnd = parsedUser.goal === 'fat-loss' ? (parsedUser.bodyFat || 22) : (parsedUser.bodyFat || 22);
-          const bodyFat = bodyFatStart - ((bodyFatStart - bodyFatEnd) * progress);
-          const muscleMassStart = parsedUser.goal === 'muscle-gain' 
-            ? Math.round(parsedUser.weight * 0.75) - 3 
-            : Math.round(parsedUser.weight * 0.75);
-          const muscleMassEnd = Math.round(parsedUser.weight * 0.75);
-          const muscleMass = muscleMassStart + ((muscleMassEnd - muscleMassStart) * progress);
-          
-          weightHistory.push({
-            date: date.toISOString().split('T')[0],
-            value: Math.round(weight * 10) / 10
-          });
-          
-          bodyFatHistory.push({
-            date: date.toISOString().split('T')[0],
-            value: Math.round(bodyFat * 10) / 10
-          });
-          
-          muscleMassHistory.push({
-            date: date.toISOString().split('T')[0],
-            value: Math.round(muscleMass * 10) / 10
-          });
-        }
-        
-        // Update body metrics
-        setBodyMetrics({
-          weight: {
-            current: parsedUser.weight,
-            previous: previousWeight,
-            goal: goalWeight,
-            history: weightHistory
-          },
-          bodyFat: {
-            current: parsedUser.bodyFat || 22,
-            previous: parsedUser.goal === 'fat-loss' ? (parsedUser.bodyFat || 22) + 2 : (parsedUser.bodyFat || 22),
-            goal: parsedUser.goal === 'fat-loss' ? 15 : (parsedUser.bodyFat || 22),
-            history: bodyFatHistory
-          },
-          muscleMass: {
-            current: Math.round(parsedUser.weight * 0.75),
-            previous: parsedUser.goal === 'muscle-gain' 
-              ? Math.round(parsedUser.weight * 0.75) - 3 
-              : Math.round(parsedUser.weight * 0.75),
-            goal: parsedUser.goal === 'muscle-gain' 
-              ? Math.round(parsedUser.weight * 0.75) + 10 
-              : Math.round(parsedUser.weight * 0.75),
-            history: muscleMassHistory
-          },
-          measurements: parsedUser.measurements
-        });
-      }
-      
-      // Generate AI insights
-      generateInsights(parsedUser);
-    }
-  }, []);
-  
-  const generateInsights = async (user) => {
-    setIsLoadingInsights(true);
-    try {
-      // Create health metrics object for AI insights
-      const healthMetrics = {
-        weight: bodyMetrics.weight,
-        bodyFat: bodyMetrics.bodyFat,
-        muscleMass: bodyMetrics.muscleMass,
-        period: '30 days',
-        workouts: [],
-        nutrition: {
-          avgCalories: 1850,
-          avgProtein: 140,
-          avgCarbs: 160,
-          avgFat: 65
-        },
-        sleep: {
-          avgDuration: 6.8,
-          avgQuality: 75
-        }
-      };
-      
-      // Get sensitive user data
-      const sensitiveData = AuthService.getSensitiveUserData();
-      
-      // Combine user data with sensitive data
-      const fullUserData = {
-        ...user,
-        ...(sensitiveData || {})
-      };
-      
-      // Generate insights
-      const generatedInsights = await AIInsightsService.generateInsights(fullUserData, healthMetrics);
-      setInsights(generatedInsights);
-    } catch (error) {
-      console.error('Error generating insights:', error);
-    } finally {
-      setIsLoadingInsights(false);
-    }
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewMeasurement(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
   
-  const handleRefreshInsights = async () => {
-    setIsLoadingInsights(true);
-    try {
-      // Create health metrics object for AI insights
-      const healthMetrics = {
-        weight: bodyMetrics.weight,
-        bodyFat: bodyMetrics.bodyFat,
-        muscleMass: bodyMetrics.muscleMass,
-        period: '30 days',
-        workouts: [],
-        nutrition: {
-          avgCalories: 1850,
-          avgProtein: 140,
-          avgCarbs: 160,
-          avgFat: 65
-        },
-        sleep: {
-          avgDuration: 6.8,
-          avgQuality: 75
+  const handleAddMeasurement = () => {
+    if (!newMeasurement.value) return;
+    
+    const value = parseFloat(newMeasurement.value);
+    if (isNaN(value)) return;
+    
+    const type = newMeasurement.type;
+    const newEntry = { date: newMeasurement.date, value };
+    
+    setMeasurements(prev => {
+      const updatedHistory = [...prev[type].history, newEntry].sort((a, b) => 
+        new Date(a.date) - new Date(b.date)
+      );
+      
+      return {
+        ...prev,
+        [type]: {
+          ...prev[type],
+          previous: prev[type].current,
+          current: value,
+          history: updatedHistory
         }
       };
-      
-      // Generate insights
-      const generatedInsights = await AIInsightsService.generateInsights(userData, healthMetrics);
-      setInsights(generatedInsights);
-    } catch (error) {
-      console.error('Error generating insights:', error);
-    } finally {
-      setIsLoadingInsights(false);
-    }
+    });
+    
+    // Reset form
+    setNewMeasurement({
+      type,
+      value: '',
+      date: new Date().toISOString().split('T')[0]
+    });
   };
   
-  if (!userData) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
+  const calculateProgress = (current, goal, previous) => {
+    if (goal === current) return 100;
+    if (goal > previous) {
+      // Gaining (e.g., muscle mass)
+      const totalNeeded = goal - previous;
+      const gained = current - previous;
+      return Math.min(100, Math.max(0, (gained / totalNeeded) * 100));
+    } else {
+      // Losing (e.g., weight, body fat)
+      const totalNeeded = previous - goal;
+      const lost = previous - current;
+      return Math.min(100, Math.max(0, (lost / totalNeeded) * 100));
+    }
+  };
   
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-3xl font-bold">Body Composition</h1>
-        <p className="text-gray-600">Track your physical measurements and progress</p>
-      </header>
+      <h1 className="text-3xl font-bold tracking-tight">Body Composition</h1>
       
-      <Tabs defaultValue="metrics" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="metrics">Body Metrics</TabsTrigger>
-          <TabsTrigger value="insights">AI Insights</TabsTrigger>
-        </TabsList>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Weight Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Weight</CardTitle>
+            <CardDescription>Current progress</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold mb-2">
+              {measurements.weight.current} {measurements.weight.unit}
+              <span className="text-sm font-normal text-green-500 ml-2">
+                {measurements.weight.current < measurements.weight.previous ? 
+                  `- ${(measurements.weight.previous - measurements.weight.current).toFixed(1)} ${measurements.weight.unit}` : 
+                  `+ ${(measurements.weight.current - measurements.weight.previous).toFixed(1)} ${measurements.weight.unit}`
+                }
+              </span>
+            </div>
+            <Progress 
+              value={calculateProgress(
+                measurements.weight.current, 
+                measurements.weight.goal, 
+                measurements.weight.previous
+              )} 
+              className="h-2 mb-2"
+            />
+            <div className="text-sm text-muted-foreground">
+              Goal: {measurements.weight.goal} {measurements.weight.unit} 
+              ({calculateProgress(
+                measurements.weight.current, 
+                measurements.weight.goal, 
+                measurements.weight.previous
+              ).toFixed(0)}% Complete)
+            </div>
+          </CardContent>
+        </Card>
         
-        <TabsContent value="metrics" className="space-y-4">
-          {/* Body metrics content */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="bg-white shadow-md">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Weight</CardTitle>
-                <CardDescription>Current</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{bodyMetrics.weight.current} lbs</div>
-                <div className={`text-sm ${bodyMetrics.weight.current < bodyMetrics.weight.previous ? 'text-green-600' : 'text-red-600'}`}>
-                  {bodyMetrics.weight.current < bodyMetrics.weight.previous 
-                    ? `↓ ${(bodyMetrics.weight.previous - bodyMetrics.weight.current).toFixed(1)} lbs` 
-                    : `↑ ${(bodyMetrics.weight.current - bodyMetrics.weight.previous).toFixed(1)} lbs`}
-                </div>
-                <div className="mt-4">
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>Goal: {bodyMetrics.weight.goal} lbs</span>
-                    <span>{Math.round(((bodyMetrics.weight.current - bodyMetrics.weight.previous) / (bodyMetrics.weight.goal - bodyMetrics.weight.previous)) * 100)}%</span>
-                  </div>
-                  <Progress value={Math.round(((bodyMetrics.weight.current - bodyMetrics.weight.previous) / (bodyMetrics.weight.goal - bodyMetrics.weight.previous)) * 100)} className="h-2" />
-                </div>
-              </CardContent>
-            </Card>
+        {/* Body Fat Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Body Fat</CardTitle>
+            <CardDescription>Current progress</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold mb-2">
+              {measurements.bodyFat.current} {measurements.bodyFat.unit}
+              <span className="text-sm font-normal text-green-500 ml-2">
+                {measurements.bodyFat.current < measurements.bodyFat.previous ? 
+                  `- ${(measurements.bodyFat.previous - measurements.bodyFat.current).toFixed(1)} ${measurements.bodyFat.unit}` : 
+                  `+ ${(measurements.bodyFat.current - measurements.bodyFat.previous).toFixed(1)} ${measurements.bodyFat.unit}`
+                }
+              </span>
+            </div>
+            <Progress 
+              value={calculateProgress(
+                measurements.bodyFat.current, 
+                measurements.bodyFat.goal, 
+                measurements.bodyFat.previous
+              )} 
+              className="h-2 mb-2"
+            />
+            <div className="text-sm text-muted-foreground">
+              Goal: {measurements.bodyFat.goal} {measurements.bodyFat.unit} 
+              ({calculateProgress(
+                measurements.bodyFat.current, 
+                measurements.bodyFat.goal, 
+                measurements.bodyFat.previous
+              ).toFixed(0)}% Complete)
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Muscle Mass Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Muscle Mass</CardTitle>
+            <CardDescription>Current progress</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold mb-2">
+              {measurements.muscleMass.current} {measurements.muscleMass.unit}
+              <span className="text-sm font-normal text-green-500 ml-2">
+                {measurements.muscleMass.current > measurements.muscleMass.previous ? 
+                  `+ ${(measurements.muscleMass.current - measurements.muscleMass.previous).toFixed(1)} ${measurements.muscleMass.unit}` : 
+                  `- ${(measurements.muscleMass.previous - measurements.muscleMass.current).toFixed(1)} ${measurements.muscleMass.unit}`
+                }
+              </span>
+            </div>
+            <Progress 
+              value={calculateProgress(
+                measurements.muscleMass.current, 
+                measurements.muscleMass.goal, 
+                measurements.muscleMass.previous
+              )} 
+              className="h-2 mb-2"
+            />
+            <div className="text-sm text-muted-foreground">
+              Goal: {measurements.muscleMass.goal} {measurements.muscleMass.unit} 
+              ({calculateProgress(
+                measurements.muscleMass.current, 
+                measurements.muscleMass.goal, 
+                measurements.muscleMass.previous
+              ).toFixed(0)}% Complete)
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      
+      {/* Add New Measurement */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Add New Measurement</CardTitle>
+          <CardDescription>Record your latest body composition data</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <Label htmlFor="measurement-type">Measurement Type</Label>
+              <select
+                id="measurement-type"
+                name="type"
+                value={newMeasurement.type}
+                onChange={handleInputChange}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="weight">Weight</option>
+                <option value="bodyFat">Body Fat</option>
+                <option value="muscleMass">Muscle Mass</option>
+              </select>
+            </div>
             
-            <Card className="bg-white shadow-md">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Body Fat</CardTitle>
-                <CardDescription>Current</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{bodyMetrics.bodyFat.current}%</div>
-                <div className={`text-sm ${bodyMetrics.bodyFat.current < bodyMetrics.bodyFat.previous ? 'text-green-600' : 'text-red-600'}`}>
-                  {bodyMetrics.bodyFat.current < bodyMetrics.bodyFat.previous 
-                    ? `↓ ${(bodyMetrics.bodyFat.previous - bodyMetrics.bodyFat.current).toFixed(1)}%` 
-                    : `↑ ${(bodyMetrics.bodyFat.current - bodyMetrics.bodyFat.previous).toFixed(1)}%`}
-                </div>
-                <div className="mt-4">
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>Goal: {bodyMetrics.bodyFat.goal}%</span>
-                    <span>{Math.round(((bodyMetrics.bodyFat.current - bodyMetrics.bodyFat.previous) / (bodyMetrics.bodyFat.goal - bodyMetrics.bodyFat.previous)) * 100)}%</span>
-                  </div>
-                  <Progress value={Math.round(((bodyMetrics.bodyFat.current - bodyMetrics.bodyFat.previous) / (bodyMetrics.bodyFat.goal - bodyMetrics.bodyFat.previous)) * 100)} className="h-2" />
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-white shadow-md">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Muscle Mass</CardTitle>
-                <CardDescription>Current Estimate</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{bodyMetrics.muscleMass.current} lbs</div>
-                <div className={`text-sm ${bodyMetrics.muscleMass.current > bodyMetrics.muscleMass.previous ? 'text-green-600' : 'text-red-600'}`}>
-                  {bodyMetrics.muscleMass.current > bodyMetrics.muscleMass.previous 
-                    ? `↑ ${(bodyMetrics.muscleMass.current - bodyMetrics.muscleMass.previous).toFixed(1)} lbs` 
-                    : `↓ ${(bodyMetrics.muscleMass.previous - bodyMetrics.muscleMass.current).toFixed(1)} lbs`}
-                </div>
-                <div className="mt-4">
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>Goal: {bodyMetrics.muscleMass.goal} lbs</span>
-                    <span>{Math.round(((bodyMetrics.muscleMass.current - bodyMetrics.muscleMass.previous) / (bodyMetrics.muscleMass.goal - bodyMetrics.muscleMass.previous)) * 100)}%</span>
-                  </div>
-                  <Progress value={Math.round(((bodyMetrics.muscleMass.current - bodyMetrics.muscleMass.previous) / (bodyMetrics.muscleMass.goal - bodyMetrics.muscleMass.previous)) * 100)} className="h-2" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-          
-          {/* History charts would go here */}
-          <Card className="bg-white shadow-md">
-            <CardHeader>
-              <CardTitle>History</CardTitle>
-              <CardDescription>Last 30 days</CardDescription>
-            </CardHeader>
-            <CardContent className="h-80">
-              <div className="text-center py-8">
-                <p className="text-gray-500">Charts will be displayed here</p>
+            <div>
+              <Label htmlFor="measurement-value">Value</Label>
+              <div className="flex items-center">
+                <Input
+                  id="measurement-value"
+                  name="value"
+                  type="number"
+                  step="0.1"
+                  placeholder={`Enter ${newMeasurement.type} value`}
+                  value={newMeasurement.value}
+                  onChange={handleInputChange}
+                />
+                <span className="ml-2">{measurements[newMeasurement.type].unit}</span>
               </div>
-            </CardContent>
-          </Card>
-          
-          <div className="flex justify-end">
-            <Button>Update Measurements</Button>
+            </div>
+            
+            <div>
+              <Label htmlFor="measurement-date">Date</Label>
+              <Input
+                id="measurement-date"
+                name="date"
+                type="date"
+                value={newMeasurement.date}
+                onChange={handleInputChange}
+              />
+            </div>
+            
+            <div className="flex items-end">
+              <Button onClick={handleAddMeasurement} className="w-full">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Measurement
+              </Button>
+            </div>
           </div>
-        </TabsContent>
-        
-        <TabsContent value="insights" className="space-y-4">
-          <AIInsightsComponent 
-            insights={insights} 
-            isLoading={isLoadingInsights} 
-            userData={userData} 
-            healthMetrics={bodyMetrics}
-            onRefresh={handleRefreshInsights}
-          />
-        </TabsContent>
-      </Tabs>
+        </CardContent>
+      </Card>
+      
+      {/* History Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Measurement History</CardTitle>
+          <CardDescription>Track your progress over time</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="weight">
+            <TabsList className="mb-4">
+              <TabsTrigger value="weight">Weight</TabsTrigger>
+              <TabsTrigger value="bodyFat">Body Fat</TabsTrigger>
+              <TabsTrigger value="muscleMass">Muscle Mass</TabsTrigger>
+            </TabsList>
+            
+            {Object.keys(measurements).map(key => (
+              <TabsContent key={key} value={key}>
+                <div className="h-[300px] flex items-end space-x-2">
+                  {measurements[key].history.map((entry, index) => {
+                    const max = Math.max(...measurements[key].history.map(e => e.value));
+                    const min = Math.min(...measurements[key].history.map(e => e.value));
+                    const range = max - min || 1;
+                    const height = ((entry.value - min) / range) * 200 + 50;
+                    
+                    return (
+                      <div key={index} className="flex flex-col items-center flex-1">
+                        <div 
+                          className={`w-full ${key === 'muscleMass' ? 'bg-blue-500/80' : 'bg-primary/80'} rounded-t-sm`} 
+                          style={{ height: `${height}px` }}
+                        ></div>
+                        <div className="text-xs text-muted-foreground mt-1 rotate-45 origin-left">
+                          {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </div>
+                        <div className="text-xs font-medium mt-2">
+                          {entry.value} {measurements[key].unit}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </TabsContent>
+            ))}
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 } 

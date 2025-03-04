@@ -1,65 +1,66 @@
-# Fitly - Health & Fitness Tracking App
+# Fitness Tracking Application
 
-Fitly is a comprehensive health and fitness tracking application that helps users monitor their progress, get personalized AI-powered insights, and achieve their fitness goals.
+A comprehensive fitness tracking application built with Next.js and Node.js.
 
 ## Features
 
-- **User Authentication**: Secure sign-up and login functionality
-- **Personalized Dashboard**: View your key health metrics at a glance
-- **Body Composition Tracking**: Monitor weight, body fat, muscle mass, and other measurements
-- **Nutrition Tracking**: Log and analyze your daily nutrition intake
-- **Workout Logging**: Record and track your workouts
-- **AI-Powered Insights**: Get personalized recommendations based on your data
-- **Goal Setting**: Set and track progress toward your health and fitness goals
-
-## Tech Stack
-
-- **Frontend**: Next.js, React, TailwindCSS
-- **Authentication**: JWT-based authentication
-- **AI Integration**: OpenAI API for personalized insights
-- **Data Visualization**: Chart.js for progress tracking
+- User authentication
+- Workout tracking
+- Activity monitoring
+- Progress visualization
+- Personalized recommendations
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js (v14 or later)
+- Node.js 18 or higher
 - npm or yarn
 
 ### Installation
 
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/fitly.git
-   cd fitly
-   ```
+1. Clone the repository
+```bash
+git clone https://github.com/yourusername/fitness-app.git
+cd fitness-app
+```
 
-2. Install dependencies:
-   ```
-   npm install
-   # or
-   yarn install
-   ```
+2. Install dependencies
+```bash
+npm install
+cd frontend && npm install
+```
 
-3. Set up environment variables:
-   Create a `.env.local` file in the root directory with the following variables:
-   ```
-   NEXT_PUBLIC_API_URL=your_api_url
-   OPENAI_API_KEY=your_openai_api_key
-   ```
+3. Set up environment variables
+```bash
+cp .env.example .env.local
+```
 
-4. Run the development server:
-   ```
-   npm run dev
-   # or
-   yarn dev
-   ```
-
-5. Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
+4. Start the development server
+```bash
+npm run dev
+```
 
 ## Deployment
 
-The app can be deployed to Vercel, Netlify, or any other hosting platform that supports Next.js applications.
+### Deploying to Google Cloud Run
+
+1. Make sure you have the Google Cloud SDK installed
+
+2. Authenticate with Google Cloud
+```bash
+gcloud auth login
+```
+
+3. Set your project ID
+```bash
+gcloud config set project YOUR_PROJECT_ID
+```
+
+4. Build and deploy
+```bash
+./scripts/deploy.sh
+```
 
 ## Contributing
 
