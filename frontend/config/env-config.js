@@ -1,9 +1,10 @@
-// Direct environment configuration for Fitbit
+// Environment configuration for Fitbit and backend API
 const envConfig = {
-  FITBIT_CLIENT_ID: '23Q4RP',
-  FITBIT_CLIENT_SECRET: '2d1b59b8c3f33379352cc988508d3252',
-  FITBIT_REDIRECT_URI: 'http://localhost:3000/api/fitbit/callback',
-  BACKEND_API_URL: 'http://localhost:5001'
+  FITBIT_CLIENT_ID: process.env.FITBIT_CLIENT_ID,
+  FITBIT_CLIENT_SECRET: process.env.FITBIT_CLIENT_SECRET,
+  FITBIT_REDIRECT_URI: process.env.FITBIT_REDIRECT_URI,
+  BACKEND_API_URL: process.env.BACKEND_API_URL,
+  BASE_URL: process.env.NEXT_PUBLIC_BASE_URL
 };
 
 export default envConfig; 
